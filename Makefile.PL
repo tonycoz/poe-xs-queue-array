@@ -1,0 +1,19 @@
+use ExtUtils::MakeMaker;
+
+my %opts = 
+  (
+   NAME => 'POE::XS::Queue::Array',
+   VERSION_FROM => 'Array.pm',
+   OBJECT => 'Array.o',
+   PREREQ_PM => {
+		 'POE'    => 0.29,
+		},
+  );
+if ($ExtUtils::MakeMaker::VERSION > 6.06) {
+  $opts{AUTHOR} = 'Tony Cook <tonyc@cpan.org>';
+  $opts{ABSTRACT} = 'XS version of POE::Queue::Array';
+}
+
+WriteMakefile(%opts);
+
+

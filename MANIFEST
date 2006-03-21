@@ -1,0 +1,11 @@
+Array.pm
+Array.xs
+Changes
+MANIFEST
+META.yml                                 Module meta-data (added by MakeMaker)
+Makefile.PL
+README
+bench1.perl	based on code in POE's svn tree
+bench2.perl	my own benchmarks
+t/01_array.t
+typemap
