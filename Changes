@@ -1,4 +1,12 @@
 Revision history for Perl extension POE::XS::Queue::Array.
 
+0.002
+ - moved the structural queue code to queue.c, Array.xs is purely an
+   interface to that now.
+ - replaced all the opaque memmove() calls with a call to pq_move_items() 
+   which does sanity checks in DEBUG code.
+ - added t/02_release.t which attempts to check we're handling references 
+   correctly.
+
 0.001
  - initial release

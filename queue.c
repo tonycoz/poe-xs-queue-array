@@ -4,8 +4,10 @@
 
 #include "queue.h"
 
-#define DEBUG(x) x
-/*#define DEBUG(x)*/
+/*#define DEBUG(x) x*/
+#define DEBUG(x)
+#define DEBUG_ERR(x) x
+/*#define DEBUG_ERR(x)*/
 
 #define PQ_START_SIZE 10
 #define AT_START 0
@@ -170,6 +172,40 @@ pq_set_id_priority(poe_queue *pq, pq_id_t id, pq_priority_t new_priority) {
 }
 
 /*
+pq_move_items - moves items around.
+
+This encapsulates the old calls to memmove(), providing a single place
+to add error checking.
+*/
+static void
+pq_move_items(poe_queue *pq, int target, int src, int count) {
+
+  DEBUG_ERR(
+  {
+    int die = 0;
+    if (src < pq->start) {
+      fprintf(stderr, "src %d less than start %d\n", src, pq->start);
+      ++die;
+    }
+    if (src + count > pq->end) {
+      fprintf(stderr, "src %d + count %d beyond end %d\n", src, count, pq->end);
+      ++die;
+    }
+    if (target < 0) {
+      fprintf(stderr, "target %d < 0\n", target);
+      ++die;
+    }
+    if (target + count > pq->alloc) {
+      fprintf(stderr, "target %d + count %d > alloc\n", target, count, pq->alloc);
+      ++die;
+    }
+    if (die) *(char *)0 = '\0';
+  }
+  )
+  memmove(pq->entries + target, pq->entries + src, count * sizeof(pq_entry));
+}
+
+/*
 pq_realloc - make space at the front of back of the queue.
 
 This adjusts the queue to allow insertion of a single item at the
@@ -194,7 +230,6 @@ pq_realloc(poe_queue *pq, int at_end) {
   int count = pq->end - pq->start;
 
   DEBUG( fprintf(stderr, "pq_realloc((%d, %d, %d), %d)\n", pq->start, pq->end, pq->alloc, at_end) );
-  pq_dump(pq);
   if (count * 3 / 2 < pq->alloc) {
     /* 33 % or more space available, use some of it */
     int new_start;
@@ -206,8 +241,7 @@ pq_realloc(poe_queue *pq, int at_end) {
       new_start = (pq->alloc - count) * 2 / 3;
     }
     DEBUG( fprintf(stderr, "  moving start to %d\n", new_start) );
-    memmove(pq->entries + new_start, pq->entries + pq->start,
-	    count * sizeof(pq_entry));
+    pq_move_items(pq, new_start, pq->start, count);
     pq->start = new_start;
     pq->end = new_start + count;
   }
@@ -224,13 +258,11 @@ pq_realloc(poe_queue *pq, int at_end) {
     if (!at_end) {
       int new_start = (new_alloc - count) * 2 / 3;
       DEBUG( fprintf(stderr, "  moving start to %d\n", new_start) );
-      memmove(pq->entries + new_start, pq->entries + pq->start,
-	      count * sizeof(pq_entry));
+      pq_move_items(pq, new_start, pq->start, count);
       pq->start = new_start;
       pq->end = new_start + count;
     }
   }
-  pq_dump(pq);
   DEBUG( fprintf(stderr, "  final: %d %d %d\n", pq->start, pq->end, pq->alloc) );
 }
 
@@ -302,7 +334,7 @@ pq_enqueue(poe_queue *pq, pq_priority_t priority, SV *payload) {
         i += pq->start - old_start;
       }
       
-      memmove(pq->entries + i + 1, pq->entries + i, (pq->end - i) * sizeof(pq_entry));
+      pq_move_items(pq, i+1, i, pq->end - i);
       ++pq->end;
       fill_at = i;
     }
@@ -313,8 +345,7 @@ pq_enqueue(poe_queue *pq, pq_priority_t priority, SV *payload) {
 	pq_realloc(pq, AT_START);
 	i += pq->start;
       }
-      memmove(pq->entries + pq->start - 1, pq->entries + pq->start,
-	     (i - pq->start) * sizeof(pq_entry));
+      pq_move_items(pq, pq->start-1, pq->start, i - pq->start);
       --pq->start;
       fill_at = i-1;
     }
@@ -440,10 +471,11 @@ pq_remove_item(poe_queue *pq, pq_id_t id, SV *filter, pq_entry *removed) {
     --pq->end;
   }
   else {
-    memmove(pq->entries + index, pq->entries + index + 1,
-	    sizeof(pq_entry) * (pq->end - index - 1));
+    pq_move_items(pq, index, index+1, pq->end - index - 1);
     --pq->end;
   }
+  DEBUG( fprintf(stderr, "removed (%d, %p (%d))\n", id, removed->payload,
+		 SvREFCNT(removed->payload)) );
 
   return 1;
 }
@@ -522,15 +554,13 @@ pq_set_priority(poe_queue *pq, pq_id_t id, SV *filter, pq_priority_t new_priorit
 
       if (insert_at < index) {
         DEBUG( fprintf(stderr, "  - insert_at < index\n") );
-        memmove(pq->entries + insert_at + 1, pq->entries + insert_at,
-	        sizeof(pq_entry) * (index - insert_at));
+	pq_move_items(pq, insert_at + 1, insert_at, index - insert_at);
         pq->entries[insert_at] = saved;
       }
       else {
         DEBUG( fprintf(stderr, "  - insert_at > index\n") );
 	--insert_at;
-	memmove(pq->entries + index, pq->entries + index + 1,
-	        sizeof(pq_entry) * (insert_at - index));
+	pq_move_items(pq, index, index + 1, insert_at - index);
         pq->entries[insert_at] = saved;
       }
     }
@@ -584,15 +614,13 @@ pq_adjust_priority(poe_queue *pq, pq_id_t id, SV *filter, double delta, pq_prior
 
       if (insert_at < index) {
         DEBUG( fprintf(stderr, "  - insert_at < index\n") );
-        memmove(pq->entries + insert_at + 1, pq->entries + insert_at,
-	        sizeof(pq_entry) * (index - insert_at));
+	pq_move_items(pq, insert_at + 1, insert_at, index - insert_at);
         pq->entries[insert_at] = saved;
       }
       else {
         DEBUG( fprintf(stderr, "  - insert_at > index\n") );
 	--insert_at;
-	memmove(pq->entries + index, pq->entries + index + 1,
-	        sizeof(pq_entry) * (insert_at - index));
+	pq_move_items(pq, index, index + 1, insert_at - index);
         pq->entries[insert_at] = saved;
       }
     }
