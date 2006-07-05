@@ -4,6 +4,7 @@
 #include <string.h> /* for memmove() mostly */
 #include <errno.h> /* errno values */
 #include "queue.h"
+#include "alloc.h"
 
 /* this typedef lets the standard T_PTROBJ typemap handle the
 conversion between perl class and C type and back again */
@@ -110,7 +111,7 @@ pq_remove_items(pq, filter, ...)
           }
 	}
 	if (removed_entries)
-          free(removed_entries);
+          myfree(removed_entries);
 
 void
 pq_adjust_priority(pq, id, filter, delta)
@@ -165,7 +166,7 @@ pq_peek_items(pq, filter, ...)
 	    rv = newRV_noinc((SV *)av);
 	    PUSHs(sv_2mortal(rv));
 	  }
-          free(ret_items);
+          myfree(ret_items);
 	}
 
 void

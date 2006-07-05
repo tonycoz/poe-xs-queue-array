@@ -4,7 +4,7 @@ my %opts =
   (
    NAME => 'POE::XS::Queue::Array',
    VERSION_FROM => 'Array.pm',
-   OBJECT => 'Array.o queue.o',
+   OBJECT => 'Array.o queue.o alloc.o',
    PREREQ_PM => {
 		 'POE'    => 0.29,
 		},

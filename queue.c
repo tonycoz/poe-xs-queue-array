@@ -3,6 +3,7 @@
 #include "XSUB.h"
 
 #include "queue.h"
+#include "alloc.h"
 
 /*#define DEBUG(x) x*/
 #define DEBUG(x)
@@ -64,7 +65,7 @@ No parameters.  returns the new queue object.
 */
 poe_queue *
 pq_create(void) {
-  poe_queue *pq = malloc(sizeof(poe_queue));
+  poe_queue *pq = mymalloc(sizeof(poe_queue));
   
   if (pq == NULL)
     croak("Out of memory");
@@ -73,7 +74,8 @@ pq_create(void) {
   pq->alloc = PQ_START_SIZE;
   pq->queue_seq = 0;
   pq->ids = newHV();
-  pq->entries = calloc(sizeof(pq_entry), PQ_START_SIZE);
+  pq->entries = mymalloc(sizeof(pq_entry) * PQ_START_SIZE);
+  memset(pq->entries, 0, sizeof(pq_entry) * PQ_START_SIZE);
   if (pq->entries == NULL)
     croak("Out of memory");
 
@@ -101,9 +103,9 @@ pq_delete(poe_queue *pq) {
   SvREFCNT_dec((SV *)pq->ids);
   pq->ids = NULL;
   if (pq->entries)
-    free(pq->entries);
+    myfree(pq->entries);
   pq->entries = NULL;
-  free(pq);
+  myfree(pq);
 }
 
 /*
@@ -247,7 +249,7 @@ pq_realloc(poe_queue *pq, int at_end) {
   }
   else {
     int new_alloc = pq->alloc * 3 / 2;
-    pq->entries = realloc(pq->entries, sizeof(pq_entry) * new_alloc);
+    pq->entries = myrealloc(pq->entries, sizeof(pq_entry) * new_alloc);
     pq->alloc = new_alloc;
 
     if (!pq->entries)
@@ -489,7 +491,7 @@ pq_remove_items(poe_queue *pq, SV *filter, int max_count, pq_entry **entries) {
   if (pq->start == pq->end)
     return 0;
 
-  *entries = malloc(sizeof(pq_entry) * (pq->end - pq->start));
+  *entries = mymalloc(sizeof(pq_entry) * (pq->end - pq->start));
   if (!*entries)
     croak("Out of memory");
   
@@ -641,14 +643,14 @@ pq_peek_items(poe_queue *pq, SV *filter, int max_count, pq_entry **items) {
   if (pq->end == pq->start)
     return 0;
 
-  *items = malloc(sizeof(pq_entry) * (pq->end - pq->start));
+  *items = mymalloc(sizeof(pq_entry) * (pq->end - pq->start));
   for (i = pq->start; i < pq->end; ++i) {
     if (pq_test_filter(pq->entries + i, filter)) {
       (*items)[count++] = pq->entries[i];
     }
   }
   if (!count) {
-    free(*items);
+    myfree(*items);
     *items = NULL;
   }
 
