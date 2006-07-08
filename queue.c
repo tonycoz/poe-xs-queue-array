@@ -14,7 +14,7 @@
 #define AT_START 0
 #define AT_END 1
 
-pq_id_t queue_seq;
+#define STUPID_IDS 0
 
 /*
 We store the queue in a similar way to the way perl deals with arrays,
@@ -120,14 +120,33 @@ all that needs to be modified if we change hash implementations.
 static
 pq_id_t
 pq_new_id(poe_queue *pq, pq_priority_t priority) {
-  int seq = ++pq->queue_seq;
-  SV *index = newSViv(seq);
+#if STUPID_IDS
+  int seq;
+  int i;
+  int found;
+  
+  do {
+    seq = ++pq->queue_seq;
+    found = 0;
+    for (i = pq->start; i < pq->end; ++i) {
+      if (pq->entries[i].id == seq) {
+	found = 1;
+	break;
+      }
+    }
+  } while (found);
+
+  return seq;
+#else
+  int seq = ++pq->queue_seq;;
+  SV *index = sv_2mortal(newSViv(seq));
 
   while (hv_exists_ent(pq->ids, index, 0)) {
     seq = ++pq->queue_seq;
     sv_setiv(index, seq);
   }
   hv_store_ent(pq->ids, index, newSVnv(priority), 0);
+#endif
 
   return seq;
 }
@@ -138,9 +157,12 @@ pq_release_id - releases an id for future use.
 static
 void
 pq_release_id(poe_queue *pq, pq_id_t id) {
+#if STUPID_IDS
+#else
   SV *id_sv = sv_2mortal(newSViv(id));
 
   hv_delete_ent(pq->ids, id_sv, 0, 0);
+#endif
 }
 
 /*
@@ -149,6 +171,18 @@ pq_item_priority - get the priority of an item given it's id
 static
 int
 pq_item_priority(poe_queue *pq, pq_id_t id, pq_priority_t *priority) {
+#if STUPID_IDS
+  int i;
+
+  for (i = pq->start; i < pq->end; ++i) {
+    if (pq->entries[i].id == id) {
+      *priority = pq->entries[i].priority;
+      return 1;
+    }
+  }
+
+  return 0;
+#else
   HE *entry = hv_fetch_ent(pq->ids, sv_2mortal(newSViv(id)), 0, 0);
 
   if (!entry)
@@ -157,6 +191,7 @@ pq_item_priority(poe_queue *pq, pq_id_t id, pq_priority_t *priority) {
   *priority = SvNV(HeVAL(entry));
 
   return 1;
+#endif
 }
 
 /*
@@ -165,12 +200,16 @@ pq_set_id_priority - set the priority of an item in the id hash
 static
 void
 pq_set_id_priority(poe_queue *pq, pq_id_t id, pq_priority_t new_priority) {
+#if STUPID_IDS
+  /* nothing to do, caller set it in the array */
+#else
   HE *entry = hv_fetch_ent(pq->ids, sv_2mortal(newSViv(id)), 0, 0);
 
   if (!entry)
     croak("pq_set_priority: id not found");
 
   sv_setnv(HeVAL(entry), new_priority);
+#endif
 }
 
 /*
