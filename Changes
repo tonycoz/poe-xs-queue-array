@@ -7,6 +7,19 @@ Revision history for Perl extension POE::XS::Queue::Array.
    which does sanity checks in DEBUG code.
  - added t/02_release.t which attempts to check we're handling references 
    correctly.
+ - added Imager's memory debugging code in an attempt to find the
+   crash problem on Win32.  This seems to have eliminated the crash
+   even when it's disabled (and just calls malloc/free/realloc)
+   https://rt.cpan.org/Ticket/Display.html?id=18543
+ - found the memory leak - we were creating an SV for the id to
+   priority hash and nothing was releasing it
+   https://rt.cpan.org/Ticket/Display.html?id=20018
+ - the memory leak fix has become obsolete, we now avoid creating the
+   SV at all by using the id in memory as a key to the hash.
+ - added a verify method during debugging, it's not necessary anymore
+   but someone else fiddling with the code might find it useful
+ - pq_find_item() and pq_insertion_point() now use a binary search for
+   larger queues.  These were the hotspots going by sprof profiling.
 
 0.001
  - initial release
