@@ -172,3 +172,7 @@ pq_peek_items(pq, filter, ...)
 void
 pq_dump(pq)
 	POE::XS::Queue::Array pq
+
+void
+pq_verify(pq)
+	POE::XS::Queue::Array pq

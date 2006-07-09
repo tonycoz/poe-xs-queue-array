@@ -10,11 +10,21 @@
 #define DEBUG_ERR(x) x
 /*#define DEBUG_ERR(x)*/
 
+/*#define KEEP_STATS 1*/
+
+#if KEEP_STATS
+#define STATS(x) x
+#else
+#define STATS(x)
+#endif
+
 #define PQ_START_SIZE 10
 #define AT_START 0
 #define AT_END 1
 
 #define STUPID_IDS 0
+
+#define LARGE_QUEUE_SIZE 50
 
 /*
 We store the queue in a similar way to the way perl deals with arrays,
@@ -55,6 +65,11 @@ struct poe_queue_tag {
 
   /* the actual entries */
   pq_entry *entries;
+
+#if KEEP_STATS
+  int total_finds;
+  int binary_finds;
+#endif
 };
 
 /*
@@ -78,6 +93,10 @@ pq_create(void) {
   memset(pq->entries, 0, sizeof(pq_entry) * PQ_START_SIZE);
   if (pq->entries == NULL)
     croak("Out of memory");
+
+#if KEEP_STATS
+  pq->total_finds = pq->binary_finds = 0;
+#endif
 
   DEBUG( fprintf(stderr, "pq_create() => %p\n", pq) );
 
@@ -138,14 +157,12 @@ pq_new_id(poe_queue *pq, pq_priority_t priority) {
 
   return seq;
 #else
-  int seq = ++pq->queue_seq;;
-  SV *index = sv_2mortal(newSViv(seq));
+  pq_id_t seq = ++pq->queue_seq;;
 
-  while (hv_exists_ent(pq->ids, index, 0)) {
+  while (hv_exists(pq->ids, (char *)&seq, sizeof(seq))) {
     seq = ++pq->queue_seq;
-    sv_setiv(index, seq);
   }
-  hv_store_ent(pq->ids, index, newSVnv(priority), 0);
+  hv_store(pq->ids, (char *)&seq, sizeof(seq), newSVnv(priority), 0);
 #endif
 
   return seq;
@@ -159,9 +176,7 @@ void
 pq_release_id(poe_queue *pq, pq_id_t id) {
 #if STUPID_IDS
 #else
-  SV *id_sv = sv_2mortal(newSViv(id));
-
-  hv_delete_ent(pq->ids, id_sv, 0, 0);
+  hv_delete(pq->ids, (char *)&id, sizeof(id), 0);
 #endif
 }
 
@@ -183,12 +198,12 @@ pq_item_priority(poe_queue *pq, pq_id_t id, pq_priority_t *priority) {
 
   return 0;
 #else
-  HE *entry = hv_fetch_ent(pq->ids, sv_2mortal(newSViv(id)), 0, 0);
+  SV **entry = hv_fetch(pq->ids, (char *)&id, sizeof(id), 0);
 
-  if (!entry)
+  if (!entry || !*entry)
     return 0;
 
-  *priority = SvNV(HeVAL(entry));
+  *priority = SvNV(*entry);
 
   return 1;
 #endif
@@ -203,12 +218,12 @@ pq_set_id_priority(poe_queue *pq, pq_id_t id, pq_priority_t new_priority) {
 #if STUPID_IDS
   /* nothing to do, caller set it in the array */
 #else
-  HE *entry = hv_fetch_ent(pq->ids, sv_2mortal(newSViv(id)), 0, 0);
+  SV **entry = hv_fetch(pq->ids, (char *)&id, sizeof(id), 0);
 
-  if (!entry)
+  if (!entry && !*entry)
     croak("pq_set_priority: id not found");
 
-  sv_setnv(HeVAL(entry), new_priority);
+  sv_setnv(*entry, new_priority);
 #endif
 }
 
@@ -316,15 +331,38 @@ Internal.
 static
 int
 pq_insertion_point(poe_queue *pq, pq_priority_t priority) {
-  /* for now this is just a linear search, later we should make it 
-     binary */
-  int i = pq->end;
-  while (i > pq->start &&
-         priority < pq->entries[i-1].priority) {
-    --i;
+  if (pq->end - pq->start < LARGE_QUEUE_SIZE) {
+    int i = pq->end;
+    while (i > pq->start &&
+           priority < pq->entries[i-1].priority) {
+      --i;
+    }
+    return i;
   }
+  else {
+    int lower = pq->start;
+    int upper = pq->end - 1;
+    while (1) {
+      int midpoint = (lower + upper) >> 1;
 
-  return i;
+      if (upper < lower)
+        return lower;
+      
+      if (priority < pq->entries[midpoint].priority) {
+        upper = midpoint - 1;
+        continue;
+      }
+      if (priority > pq->entries[midpoint].priority) {
+        lower = midpoint + 1;
+        continue;
+      }
+      while (midpoint < pq->end &&
+             priority == pq->entries[midpoint].priority) {
+        ++midpoint;
+      }
+      return midpoint;
+    }
+  }
 }
 
 int
@@ -478,12 +516,53 @@ int
 pq_find_item(poe_queue *pq, pq_id_t id, pq_priority_t priority) {
   int i;
 
-  for (i = pq->start; i < pq->end; ++i) {
-    if (pq->entries[i].id == id)
-      return i;
+  STATS(++pq->total_finds);
+  if (pq->end - pq->start < LARGE_QUEUE_SIZE) {
+    for (i = pq->start; i < pq->end; ++i) {
+      if (pq->entries[i].id == id)
+        return i;
+    }
+    DEBUG(fprintf(stderr, "pq_find_item %d => %f\n", id, priority) );
+    croak("Internal inconsistency: event should have been found");
   }
-  DEBUG(fprintf(stderr, "pq_find_item %d => %f\n", id, priority) );
-  croak("Internal inconsistency: event should have been found");
+
+  /* try a binary search */
+  /* simply translated from the perl */
+  STATS(++pq->binary_finds);
+  {
+    int lower = pq->start;
+    int upper = pq->end - 1;
+    int linear_point;
+    while (1) {
+      int midpoint = (upper + lower) >> 1;
+      if (upper < lower) {
+        croak("Internal inconsistency, priorities out of order");
+      }
+      if (priority < pq->entries[midpoint].priority) {
+        upper = midpoint - 1;
+        continue;
+      }
+      if (priority > pq->entries[midpoint].priority) {
+        lower = midpoint + 1;
+        continue;
+      }
+      linear_point = midpoint;
+      while (linear_point >= pq->start &&
+             priority == pq->entries[linear_point].priority) {
+        if (pq->entries[linear_point].id == id)
+          return linear_point;
+        --linear_point;
+      }
+      linear_point = midpoint;
+      while ( (++linear_point < pq->end) &&
+              priority == pq->entries[linear_point].priority) {
+        if (pq->entries[linear_point].id == id)
+          return linear_point;
+      }
+
+      croak("internal inconsistency: event should have been found");
+    }
+  }
 }
 
 int
@@ -720,6 +799,34 @@ pq_dump(poe_queue *pq) {
   hv_iterinit(pq->ids);
   while ((he = hv_iternext(pq->ids)) != NULL) {
     STRLEN len;
-    fprintf(stderr, "   %s => %f\n", HePV(he, len), SvNV(hv_iterval(pq->ids, he)));
+    fprintf(stderr, "   %d => %f\n", *(pq_id_t *)HePV(he, len), SvNV(hv_iterval(pq->ids, he)));
+  }
+}
+
+/*
+pq_verify - basic verification of the structure of the queue
+
+For now check for duplicate ids in sequence.
+*/
+void
+pq_verify(poe_queue *pq) {
+  int i;
+  int lastid;
+  int found_err = 0;
+
+  if (pq->start != pq->end) {
+    lastid = pq->entries[pq->start].id;
+    i = pq->start + 1;
+    while (i < pq->end) {
+      if (pq->entries[i].id == lastid) {
+        fprintf(stderr, "Duplicate id %d at %d\n", lastid, i);
+        ++found_err;
+      }
+      ++i;
+    }
+  }
+  if (found_err) {
+    pq_dump(pq);
+    exit(1);
   }
 }

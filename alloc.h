@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#define MEM_DEBUG
+/*#define MEM_DEBUG*/
 
 #ifdef MEM_DEBUG
 

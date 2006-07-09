@@ -35,5 +35,6 @@ pq_adjust_priority(poe_queue *pq, pq_id_t id, SV *filter, double delta, pq_prior
 extern int
 pq_peek_items(poe_queue *pq, SV *filter, int max_count, pq_entry **items);
 extern void pq_dump(poe_queue *pq);
+extern void pq_verify(poe_queue *pq);
 
 #endif
