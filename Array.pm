@@ -8,7 +8,7 @@ use POE::Queue;
 BEGIN {
   require Exporter;
   @ISA = qw(Exporter);
-  $VERSION = '0.001';
+  $VERSION = '0.002';
   eval {
     # try XSLoader first, DynaLoader has annoying baggage
     require XSLoader;
@@ -55,8 +55,24 @@ It implements a priority queue using C, with an XS interface supplied.
 The current implementation could use some optimization, especially for
 large queues.
 
-Please see the POE::Queue documentation, which explainsthis one's
+Please see the POE::Queue documentation, which explains this one's
 functions, features, and behavior.
+
+The following extra methods are added beyond POE::Queue::Array:
+
+=over
+
+=item dump
+
+Dumps the internal structure of the queue to stderr.
+
+=item verify
+
+Does limited verification of the structure of the queue.  If the
+verification fails then a message is sent to stderr and the queue is
+dumped as with the dump() method, and your program will exit.
+
+=back
 
 =head1 SEE ALSO
 

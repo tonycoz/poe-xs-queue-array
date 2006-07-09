@@ -1,6 +1,6 @@
 Revision history for Perl extension POE::XS::Queue::Array.
 
-0.002
+0.002 Sun Jul  9 22:50:17 EST 2006
  - moved the structural queue code to queue.c, Array.xs is purely an
    interface to that now.
  - replaced all the opaque memmove() calls with a call to pq_move_items() 
@@ -20,6 +20,7 @@ Revision history for Perl extension POE::XS::Queue::Array.
    but someone else fiddling with the code might find it useful
  - pq_find_item() and pq_insertion_point() now use a binary search for
    larger queues.  These were the hotspots going by sprof profiling.
+ - bump to 0.002
 
 0.001
  - initial release
