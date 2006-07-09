@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <string.h>
 
 /* cheap version of Imager's logging */
 char const *last_file; int last_line;
