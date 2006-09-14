@@ -1,5 +1,10 @@
 Revision history for Perl extension POE::XS::Queue::Array.
 
+0.003 Thu Sep 14 2006
+ - added #include <string.h> for strcmp/strerror declarations
+ - added a missing format specifier in the debug code in queue.c
+ - disable the debug check code by default
+
 0.002 Sun Jul  9 22:50:17 EST 2006
  - moved the structural queue code to queue.c, Array.xs is purely an
    interface to that now.
