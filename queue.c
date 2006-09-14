@@ -7,8 +7,8 @@
 
 /*#define DEBUG(x) x*/
 #define DEBUG(x)
-#define DEBUG_ERR(x) x
-/*#define DEBUG_ERR(x)*/
+/*#define DEBUG_ERR(x) x*/
+#define DEBUG_ERR(x)
 
 /*#define KEEP_STATS 1*/
 
