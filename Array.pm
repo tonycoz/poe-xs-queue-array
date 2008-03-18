@@ -3,11 +3,8 @@ use strict;
 use vars qw(@ISA $VERSION);
 use POE::Queue;
 
-@ISA = qw(POE::Queue);
-
 BEGIN {
-  require Exporter;
-  @ISA = qw(Exporter);
+  @ISA = qw(POE::Queue);
   $VERSION = '0.003';
   eval {
     # try XSLoader first, DynaLoader has annoying baggage

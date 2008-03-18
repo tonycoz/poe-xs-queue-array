@@ -1,5 +1,9 @@
 Revision history for Perl extension POE::XS::Queue::Array.
 
+0.004
+ - include license information in appropriate places
+ - fix @ISA, it was badly broken, thanks to Yuval Kogman (nothingmuch)
+
 0.003 Thu Sep 14 2006
  - added #include <string.h> for strcmp/strerror declarations
  - added a missing format specifier in the debug code in queue.c

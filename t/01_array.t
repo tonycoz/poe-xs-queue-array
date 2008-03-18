@@ -12,7 +12,7 @@ use strict;
 
 use lib qw(./mylib);
 
-use Test::More tests => 2047;
+use Test::More tests => 2048;
 
 sub POE::Kernel::ASSERT_DEFAULT () { 1 }
 sub POE::Kernel::TRACE_DEFAULT  () { 1 }
@@ -23,6 +23,8 @@ use POSIX qw(EPERM ESRCH);
 BEGIN { use_ok("POE::XS::Queue::Array") }
 
 my $q = POE::XS::Queue::Array->new();
+
+isa_ok($q, 'POE::Queue');
 
 ok($q->get_item_count == 0, "queue begins empty");
 ok(!defined($q->dequeue_next), "can't dequeue from empty queue");
