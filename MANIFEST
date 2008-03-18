@@ -2,7 +2,6 @@ Array.pm
 Array.xs        Interface between perl and queue.c
 Changes
 MANIFEST
-META.yml                                 Module meta-data (added by MakeMaker)
 Makefile.PL
 README
 alloc.c         Imager's memory debug library, mangled

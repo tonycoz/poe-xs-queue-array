@@ -108,6 +108,10 @@ those array refs.
 
 =back
 
+=head1 LICENSE
+
+POE::XS::Queue::Array is licensed under the same terms as Perl itself.
+
 =head1 AUTHOR
 
 Tony Cook <tonyc@cpan.org>
