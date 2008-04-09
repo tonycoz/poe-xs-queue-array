@@ -1,8 +1,10 @@
 Revision history for Perl extension POE::XS::Queue::Array.
 
-0.004
+0.004 Wed Apr  9 2008
  - include license information in appropriate places
  - fix @ISA, it was badly broken, thanks to Yuval Kogman (nothingmuch)
+ - add pod, pod coverage tests, such as they are
+ - bump to 0.004 for release
 
 0.003 Thu Sep 14 2006
  - added #include <string.h> for strcmp/strerror declarations

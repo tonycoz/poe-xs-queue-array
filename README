@@ -9,10 +9,7 @@ To install do:
   make test
   make install  # you may need to be root for this step
 
-This module should be considered experimental for now, see perldoc
-POE::XS::Queue::Array for details.
-
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
-Copyright (c) 2006 Anthony Cook.
+Copyright (c) 2006, 2008 Anthony Cook.
