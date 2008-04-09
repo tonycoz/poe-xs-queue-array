@@ -12,4 +12,6 @@ queue.c         Moved the implementation code here
 queue.h
 t/01_array.t
 t/02_release.t
+t/90_pod.t
+t/91_pod_cover.t
 typemap
