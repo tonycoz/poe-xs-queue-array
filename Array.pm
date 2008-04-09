@@ -85,10 +85,6 @@ Some possible improvements include:
 
 =item *
 
-use binary searches for large queues
-
-=item *
-
 use a B-Tree for the queue (not a binary tree, a B-Tree), though this
 would require a module rename.
 
