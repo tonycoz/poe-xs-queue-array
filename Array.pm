@@ -5,7 +5,7 @@ use POE::Queue;
 
 BEGIN {
   @ISA = qw(POE::Queue);
-  $VERSION = '0.004';
+  $VERSION = '0.005';
   eval {
     # try XSLoader first, DynaLoader has annoying baggage
     require XSLoader;
