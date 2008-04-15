@@ -830,3 +830,14 @@ pq_verify(poe_queue *pq) {
     exit(1);
   }
 }
+
+/*
+pq__set_errno_queue - set errno
+
+This just sets errno for testing purposes.
+*/
+void
+pq__set_errno_queue(int value) {
+  errno = value;
+}
+

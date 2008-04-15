@@ -237,15 +237,15 @@ mymalloc(size_t size) {
   void *buf;
 
   if (size < 0) {
-    fprintf(stderr, "Attempt to allocate size %d\n", size);
+    fprintf(stderr, "Attempt to allocate size %d\n", (int)size);
     exit(3);
   }
 
   if ( (buf = malloc(size)) == NULL ) {
-    mm_log((1, "mymalloc: unable to malloc %d\n", size));
-    fprintf(stderr,"Unable to malloc %d.\n", size); exit(3);
+    mm_log((1, "mymalloc: unable to malloc %d\n", (int)size));
+    fprintf(stderr,"Unable to malloc %d.\n", (int)size); exit(3);
   }
-  mm_log((1, "mymalloc(size %d) -> %p\n", size, buf));
+  mm_log((1, "mymalloc(size %d) -> %p\n", (int)size, buf));
   return buf;
 }
 

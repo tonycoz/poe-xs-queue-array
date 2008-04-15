@@ -37,4 +37,7 @@ pq_peek_items(poe_queue *pq, SV *filter, int max_count, pq_entry **items);
 extern void pq_dump(poe_queue *pq);
 extern void pq_verify(poe_queue *pq);
 
+extern void
+pq__set_errno_queue(int value);
+
 #endif

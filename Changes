@@ -1,5 +1,10 @@
 Revision history for Perl extension POE::XS::Queue::Array.
 
+0.005 unreleased
+ - extra tests to distinguish errno problems from P::X::Q:A bugs,
+   possibly leading to a workaround
+   https://rt.cpan.org/Ticket/Display.html?id=35044
+
 0.004 Wed Apr  9 2008
  - include license information in appropriate places
  - fix @ISA, it was badly broken, thanks to Yuval Kogman (nothingmuch)

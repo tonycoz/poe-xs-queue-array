@@ -176,3 +176,15 @@ pq_dump(pq)
 void
 pq_verify(pq)
 	POE::XS::Queue::Array pq
+
+# these are for testing errno is being set correctly for perl when
+# set from XS
+void
+pq__set_errno_xs(value)
+	int value
+      CODE:
+	errno = value;
+
+void
+pq__set_errno_queue(value)
+	int value
