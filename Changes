@@ -1,5 +1,10 @@
 Revision history for Perl extension POE::XS::Queue::Array.
 
+0.005_01 Fri Mar 13 2009
+ - added perl ithread support, this properly clones the queue and any
+   objects it references on thread creation.
+   http://rt.cpan.org/Public/Bug/Display.html?id=43902
+
 0.005 Tue Apr 15 2008
  - extra tests to distinguish errno problems from P::X::Q:A bugs,
    possibly leading to a workaround
