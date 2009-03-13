@@ -1,6 +1,7 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#include "embed.h"
 
 #include "queue.h"
 #include "alloc.h"
@@ -116,6 +117,8 @@ pq_delete(poe_queue *pq) {
   DEBUG( fprintf(stderr, "pq_delete(%p)\n", pq) );
   if (pq->end > pq->start) {
     for (i = pq->start; i < pq->end; ++i) {
+      DEBUG( fprintf(stderr, "  %d: %p (%u)\n", i, pq->entries[i].payload, SvREFCNT(pq->entries[i].payload)) );
+      DEBUG( sv_dump(pq->entries[i].payload) );
       SvREFCNT_dec(pq->entries[i].payload);
     }
   }
@@ -783,19 +786,20 @@ pq_dump(poe_queue *pq) {
   int i;
   HE *he;
 
-  fprintf(stderr, "poe_queue\n");
+  fprintf(stderr, "poe_queue %p\n", pq);
   fprintf(stderr, "  start: %d\n", pq->start);
   fprintf(stderr, "    end: %d\n", pq->end);
   fprintf(stderr, "  alloc: %d\n", pq->alloc);
   fprintf(stderr, "    seq: %d\n", pq->queue_seq);
-  fprintf(stderr, "  **Queue Entries:\n"
-         "      index:   id  priority    SV\n");
+  fprintf(stderr, "  **Queue Entries (base %p):\n"
+         "      index:   id  priority    SV\n", pq->entries);
   for (i = pq->start; i < pq->end; ++i) {
     pq_entry *entry = pq->entries + i;
     fprintf(stderr, "      %5d: %5d %8f  %p (%u)\n", i, entry->id, entry->priority,
 	   entry->payload, (unsigned)SvREFCNT(entry->payload));
+      DEBUG( sv_dump(entry->payload) );
   }
-  fprintf(stderr, "  **Hash entries:\n");
+  fprintf(stderr, "  **Hash entries (%p):\n", pq->ids);
   hv_iterinit(pq->ids);
   while ((he = hv_iternext(pq->ids)) != NULL) {
     STRLEN len;
@@ -840,4 +844,43 @@ void
 pq__set_errno_queue(int value) {
   errno = value;
 }
+
+#ifdef USE_ITHREADS
+
+/*
+pq_clone - clone a queue (typically for a thread)
+
+*/
+poe_queue *
+pq_clone(poe_queue *pq) {
+  poe_queue *result = mymalloc(sizeof(poe_queue));
+  pq_entry const *from;
+  pq_entry *to;
+  int i;
+  CLONE_PARAMS params;
+
+  if (pq == NULL)
+    croak("Out of memory");
+
+  /* this isn't documented <shrug> */
+  params.flags = CLONEf_KEEP_PTR_TABLE;
+  params.stashes = NULL;
+  params.proto_perl = NULL;
+
+  *result = *pq;
+  result->ids = (HV *)SvREFCNT_inc(sv_dup((SV *)pq->ids, &params));
+  result->entries = mymalloc(sizeof(pq_entry) * pq->alloc);
+  from = pq->entries + pq->start;
+  to = result->entries + pq->start;
+  for (i = pq->start; i < pq->end; ++i) {
+    *to = *from;
+    to->payload = SvREFCNT_inc(sv_dup(from->payload, &params));
+  }
+
+  DEBUG( fprintf(stderr, "pq_clone(%p) => %p\n", pq, result) );
+
+  return result;
+}
+
+#endif
 

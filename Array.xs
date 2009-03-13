@@ -10,16 +10,73 @@
 conversion between perl class and C type and back again */
 typedef poe_queue *POE__XS__Queue__Array;
 
-/* This gives us our new method and correct destruction */
-#define pq_new(class) pq_create()
+/* This gives us correct destruction */
 #define pq_DESTROY(pq) pq_delete(pq)
+
+#ifdef USE_ITHREADS
+
+#define INDEX_AV "POE::XS::Queue::Array::__obj_index"
+
+
+void
+index_object(SV *pq_sv) {
+  SV *copy;
+  IV i;
+  AV *av = get_av(INDEX_AV, 1);
+  IV len = av_len(av);
+  
+  copy = newSVsv(pq_sv);
+
+  /* put it in our store */
+  for (i = 0; i <= len; ++i) {
+    SV **entry = av_fetch(av, i, 0);
+    if (!entry || !SvOK(*entry)) {
+      SV **stored  = av_store(av, i, copy);
+      if (stored) {
+        sv_rvweaken(*stored);
+	return;
+      }
+    }
+  }
+
+  /* add it to the end */
+  {
+    SV **stored = av_store(av, len+1, copy);
+    if (stored) {
+      sv_rvweaken(*stored);
+      return;
+    }
+    else {
+      SvREFCNT_dec(copy);
+      croak("Cannot store weak copy at index %d in @" INDEX_AV, len+1);
+    }
+  }
+}
+
+#else
+#define index_object(obj)
+#endif
 
 MODULE = POE::XS::Queue::Array  PACKAGE = POE::XS::Queue::Array PREFIX = pq_
 
 PROTOTYPES: DISABLE
 
-POE::XS::Queue::Array
+# I hate ithreads, this was:
+#
+#  POE::XS::Queue::Array
+#  pq_new(class)
+
+SV *
 pq_new(class)
+      PREINIT:
+        poe_queue *pq;
+      CODE:
+	pq = pq_create();
+        RETVAL = NEWSV(1, 0);
+	sv_setref_pv(RETVAL, "POE::XS::Queue::Array", (void *)pq);
+        index_object(RETVAL);
+      OUTPUT:
+	RETVAL
 
 void
 pq_DESTROY(pq)
@@ -188,3 +245,63 @@ pq__set_errno_xs(value)
 void
 pq__set_errno_queue(value)
 	int value
+
+#ifdef USE_ITHREADS
+
+# here be dragons and way too deep a magic
+
+void
+pq_CLONE(...)
+      PREINIT:
+	IV i;
+        AV *av = get_av(INDEX_AV, 1);
+        IV len = av_len(av);
+        CLONE_PARAMS params;
+      CODE:
+        /*fprintf(stderr, "cloning queues\n");*/
+  	params.flags = CLONEf_KEEP_PTR_TABLE;
+  	params.stashes = NULL;
+  	params.proto_perl = NULL;
+	for (i = 0; i <= len; ++i) {
+          IV tmp;
+          poe_queue *pq, *dup_pq;
+          SV *rv;
+          SV **psv = av_fetch(av, i, 0);
+          if (psv && SvOK(*psv)) {
+	    /* find the actual object and dupe the queue object */
+            rv = SvRV(*psv);
+            tmp = SvIV((SV *)rv);
+	    pq = INT2PTR(poe_queue *, tmp);
+	    dup_pq = pq_clone(pq);
+            sv_setiv(rv, PTR2IV(dup_pq));
+          }
+	}
+
+
+int
+pq__active_refs()
+      PREINIT:
+        AV *av = get_av(INDEX_AV, 1);
+        IV len = av_len(av);
+        IV i;
+      CODE:
+        RETVAL = 0;
+	for (i = 0; i <= len; ++i) {
+          SV **psv = av_fetch(av, i, 0);
+ 	  if (psv && SvOK(*psv)) 
+            ++RETVAL;
+	}
+      OUTPUT:
+	RETVAL
+
+int
+pq__ref_store_size()
+      PREINIT:
+        AV *av = get_av(INDEX_AV, 1);
+      CODE:
+        RETVAL = av_len(av)+1;
+      OUTPUT:
+	RETVAL
+
+
+#endif
