@@ -1,5 +1,9 @@
 Revision history for Perl extension POE::XS::Queue::Array.
 
+0.005_02 Sun Mar 15 2009
+ - remove CLONE support and add a CLONE_SKIP() method, this handles
+   the cases from RT #43902
+
 0.005_01 Fri Mar 13 2009
  - added perl ithread support, this properly clones the queue and any
    objects it references on thread creation.
