@@ -1,24 +1,47 @@
 #!perl -w
 use strict;
-use Test::More;
 use POE::XS::Queue::Array;
 use Config;
 
 $^O eq 'MSWin32'
-  or plan skip_all => "You probably have a sane fork(), not testing";
+  or skip_all("You probably have a sane fork(), not testing");
 
 $Config{useithreads} && $Config{useithreads} eq 'define'
-  or plan skip_all => "No ithreads to support pseudo-fork";
+  or skip_all("No ithreads to support pseudo-fork");
 
-plan tests => 2;
+sub nok($$$);
+
+print "1..2\n";
 
 {
   my $q1 = POE::XS::Queue::Array->new;
   $q1->enqueue(100, 101);
-  if (!fork) {
+  my $pid = fork;
+  if (!$pid) {
     # child
-    is($q1, undef, "queue object should be magically undef");
+    nok(1, !eval { $q1->isa("POE::XS::Queue::Array") },
+	"queue object should be magically unblessed");
     exit;
   }
-  isa_ok($q1, "POE::XS::Queue::Array", "parent should still have an object");
+  wait();
+  nok(2, eval {$q1->isa("POE::XS::Queue::Array") },
+      "parent should still have an object");
+}
+
+# since we use fork, Test::More can't track test numbers, so we set them manually
+sub nok ($$$) {
+  my ($num, $ok, $msg) = @_;
+
+  if ($ok) {
+    print "ok $num # $msg\n";
+  }
+  else {
+    print "not ok $num # $msg\n";
+  }
+  $ok;
+}
+
+sub skip_all {
+  print "1..0 # $_[0]\n";
+  exit;
 }

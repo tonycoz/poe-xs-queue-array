@@ -31,6 +31,8 @@ sub import {
   *{ $package . '::ITEM_PAYLOAD'  } = \&ITEM_PAYLOAD;
 }
 
+sub CLONE_SKIP { 1 }
+
 # everything else is XS
 1;
 
