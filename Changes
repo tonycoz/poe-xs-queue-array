@@ -1,5 +1,8 @@
 Revision history for Perl extension POE::XS::Queue::Array.
 
+0.006 Sat Mar 28 2009
+ - non-developer release with CLONE_SKIP().
+
 0.005_02 Sun Mar 15 2009
  - remove CLONE support and add a CLONE_SKIP() method, this handles
    the cases from RT #43902
